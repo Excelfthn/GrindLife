@@ -97,7 +97,7 @@ class _EditorDialogState extends State<_EditorDialog> {
       if (start) {
         final d = _duration == 0 ? 60 : _duration;
         _start = m;
-        _end = (m + d).clamp(0, 24 * 60).toInt();
+        _end = (m + d).clamp(0, 23 * 60).toInt();
       } else {
         _end = m == 0 ? 24 * 60 : m;
       }
@@ -126,6 +126,7 @@ class _EditorDialogState extends State<_EditorDialog> {
     final title = _title.text.trim();
     if (title.isEmpty) return setState(() => _error = 'Give the activity a name.');
     if (_end <= _start) return setState(() => _error = 'End time must be after start time.');
+    if (_start < 5 * 60 || _end > 23 * 60) return setState(() => _error = 'Schedules run between 05:00 and 23:00.');
     if ((_rec.type == 'daily' || _rec.type == 'weekly') && _rec.weekdays.isEmpty) {
       return setState(() => _error = 'Pick at least one day.');
     }

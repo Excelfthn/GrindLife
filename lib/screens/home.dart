@@ -9,7 +9,7 @@ import 'detail.dart';
 import 'editor.dart';
 
 const _firstHour = 5;
-const _lastHour = 24;
+const _lastHour = 23;
 const _hourH = 52.0;
 const _timeCol = 34.0;
 
@@ -278,17 +278,22 @@ class _WeekGrid extends StatelessWidget {
     double y(int minutes) => ((minutes - _firstHour * 60) / 60 * _hourH).clamp(0, hours * _hourH).toDouble();
 
     final children = <Widget>[];
-    for (var h = 0; h < hours; h++) {
+    for (var h = 0; h <= hours; h++) {
       children.add(Positioned(
         top: h * _hourH,
-        left: 0,
+        left: _timeCol - 4,
         right: 0,
-        child: Container(
-          height: _hourH,
-          decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.grid))),
-          alignment: Alignment.topLeft,
-          padding: const EdgeInsets.only(top: 2),
-          child: Text((h + _firstHour).toString().padLeft(2, '0'), style: const TextStyle(fontSize: 10.5, color: C.faint)),
+        child: Container(height: 1, color: C.grid),
+      ));
+      children.add(Positioned(
+        top: h * _hourH - 7,
+        left: 0,
+        width: _timeCol - 8,
+        child: Text(
+          (h + _firstHour).toString().padLeft(2, '0'),
+          textAlign: TextAlign.right,
+          maxLines: 1,
+          style: const TextStyle(fontSize: 10.5, height: 1.2, color: C.faint),
         ),
       ));
     }
@@ -344,6 +349,9 @@ class _WeekGrid extends StatelessWidget {
         child: Container(width: 10, height: 10, decoration: const BoxDecoration(color: C.coral, shape: BoxShape.circle)),
       ));
     }
-    return SizedBox(height: hours * _hourH, width: width, child: Stack(clipBehavior: Clip.none, children: children));
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, bottom: 8),
+      child: SizedBox(height: hours * _hourH, width: width, child: Stack(clipBehavior: Clip.none, children: children)),
+    );
   }
 }
