@@ -8,7 +8,7 @@ import '../theme.dart';
 import 'detail.dart';
 import 'editor.dart';
 
-const _firstHour = 5;
+const _firstHour = 0;
 const _lastHour = 23;
 const _hourH = 52.0;
 const _timeCol = 34.0;
@@ -311,7 +311,7 @@ class _WeekGrid extends StatelessWidget {
       final day = days[i];
       for (final s in appState.schedulesOn(day)) {
         final top = y(s.startMin);
-        final h = (y(s.endMin) - top).clamp(22.0, 9999.0).toDouble();
+        final h = ((s.overnight ? hours * _hourH : y(s.endMin)) - top).clamp(22.0, 9999.0).toDouble();
         final color = attrColors[s.attr] ?? C.gold;
         final done = s.doneOn(day);
         children.add(Positioned(
@@ -329,6 +329,37 @@ class _WeekGrid extends StatelessWidget {
                 padding: const EdgeInsets.all(4),
                 child: Text(
                   done ? '✓ ${s.title}' : s.title,
+                  maxLines: (h / 14).floor().clamp(1, 8).toInt(),
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10.5, height: 1.2, fontWeight: FontWeight.w600, color: C.bg),
+                ),
+              ),
+            ),
+          ),
+        ));
+      }
+    }
+    for (var i = 0; i < 7; i++) {
+      final day = days[i];
+      final prev = DateTime(day.year, day.month, day.day - 1);
+      for (final s in appState.overnightInto(day)) {
+        final h = y(s.endMin).clamp(22.0, 9999.0).toDouble();
+        final color = attrColors[s.attr] ?? C.gold;
+        children.add(Positioned(
+          top: 1,
+          left: _timeCol + colW * i + 1,
+          width: colW - 3,
+          height: h - 2,
+          child: Material(
+            color: color.withAlpha(s.doneOn(prev) ? 90 : 170),
+            borderRadius: BorderRadius.circular(6),
+            child: InkWell(
+              borderRadius: BorderRadius.circular(6),
+              onTap: () => showDetail(context, s, prev),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Text(
+                  '↳ ${s.title}',
                   maxLines: (h / 14).floor().clamp(1, 8).toInt(),
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 10.5, height: 1.2, fontWeight: FontWeight.w600, color: C.bg),

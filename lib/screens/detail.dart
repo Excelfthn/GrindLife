@@ -187,7 +187,7 @@ class _DetailDialogState extends State<_DetailDialog> {
   }
 
   Widget _header(BuildContext context) {
-    final end = s.endMin == 24 * 60 ? '24:00' : hhmm(s.endMin);
+    final end = s.endMin == 24 * 60 ? '24:00' : (s.overnight ? '${hhmm(s.endMin)} (+1 day)' : hhmm(s.endMin));
     return Container(
       color: C.gold,
       padding: const EdgeInsets.fromLTRB(14, 8, 4, 8),

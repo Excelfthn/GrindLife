@@ -61,7 +61,8 @@ class _EditorDialogState extends State<_EditorDialog> {
   }
 
   String get _effectiveAttr => _attrManual ? _attr : guessAttr(_title.text);
-  int get _duration => (_end - _start).clamp(0, 24 * 60).toInt();
+  bool get _overnight => _end < _start;
+  int get _duration => _overnight ? _end + 24 * 60 - _start : (_end - _start).clamp(0, 24 * 60).toInt();
   String get _calc => guessCalcType(_title.text, _duration);
   int get _pool => _calc == 'none' ? 0 : (_duration * 0.5).round();
 
@@ -97,9 +98,10 @@ class _EditorDialogState extends State<_EditorDialog> {
       if (start) {
         final d = _duration == 0 ? 60 : _duration;
         _start = m;
-        _end = (m + d).clamp(0, 23 * 60).toInt();
+        final e = m + d;
+        _end = e > 24 * 60 ? e - 24 * 60 : e;
       } else {
-        _end = m == 0 ? 24 * 60 : m;
+        _end = (m == 0 && _start > 0) ? 24 * 60 : m;
       }
     });
   }
@@ -125,7 +127,7 @@ class _EditorDialogState extends State<_EditorDialog> {
   void _save() {
     final title = _title.text.trim();
     if (title.isEmpty) return setState(() => _error = 'Give the activity a name.');
-    if (_end <= _start) return setState(() => _error = 'End time must be after start time.');
+    if (_end == _start) return setState(() => _error = 'Start and end time cannot be the same.');
     if (_start < 5 * 60 || _end > 23 * 60) return setState(() => _error = 'Schedules run between 05:00 and 23:00.');
     if ((_rec.type == 'daily' || _rec.type == 'weekly') && _rec.weekdays.isEmpty) {
       return setState(() => _error = 'Pick at least one day.');
@@ -340,7 +342,7 @@ class _EditorDialogState extends State<_EditorDialog> {
                                 padding: EdgeInsets.symmetric(horizontal: 6),
                                 child: Icon(Icons.arrow_forward, size: 16, color: C.faint),
                               ),
-                              Expanded(child: _Pill(text: _end == 24 * 60 ? '24:00' : hhmm(_end), onTap: () => _pickTime(false), expand: true)),
+                              Expanded(child: _Pill(text: _end == 24 * 60 ? '24:00' : (_overnight ? '${hhmm(_end)} +1' : hhmm(_end)), onTap: () => _pickTime(false), expand: true)),
                             ],
                           ),
                         ),

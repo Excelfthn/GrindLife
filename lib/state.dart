@@ -101,6 +101,12 @@ class AppState extends ChangeNotifier {
     return list;
   }
 
+  /// Overnight schedules that started the day before and spill into [day].
+  List<Schedule> overnightInto(DateTime day) {
+    final prev = DateTime(day.year, day.month, day.day - 1);
+    return schedules.where((s) => s.overnight && s.endMin > 0 && s.rec.occursOn(prev)).toList();
+  }
+
   void upsert(Schedule s) {
     final i = schedules.indexWhere((e) => e.id == s.id);
     if (i >= 0) {

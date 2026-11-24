@@ -148,7 +148,9 @@ class Schedule {
   List<TaskItem> tasks;
   Map<String, OccState> occ;
 
-  int get duration => (endMin - startMin).clamp(0, 24 * 60);
+  /// True when the schedule ends after midnight (end time earlier than start).
+  bool get overnight => endMin < startMin;
+  int get duration => overnight ? endMin + 24 * 60 - startMin : (endMin - startMin).clamp(0, 24 * 60).toInt();
   String get calcType => guessCalcType(title, duration);
   int get pool => calcType == 'none' ? 0 : (duration * 0.5).round();
 
