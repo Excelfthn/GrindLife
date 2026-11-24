@@ -1,0 +1,16 @@
+name: life_rpg
+description: Life RPG Scheduler - a gamified schedule and to-do app.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  shared_preferences: ^2.2.3
+  google_fonts: ^6.2.1
+
+flutter:
+  uses-material-design: true
