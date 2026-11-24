@@ -9,7 +9,7 @@ import 'detail.dart';
 import 'editor.dart';
 
 const _firstHour = 0;
-const _lastHour = 23;
+const _lastHour = 24;
 const _hourH = 52.0;
 const _timeCol = 34.0;
 
@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     controller: _scroll,
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 96),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
                     child: LayoutBuilder(
                       builder: (context, constraints) => _WeekGrid(
                         days: days,
@@ -290,7 +290,7 @@ class _WeekGrid extends StatelessWidget {
         left: 0,
         width: _timeCol - 8,
         child: Text(
-          (h + _firstHour).toString().padLeft(2, '0'),
+          ((h + _firstHour) % 24).toString().padLeft(2, '0'),
           textAlign: TextAlign.right,
           maxLines: 1,
           style: const TextStyle(fontSize: 10.5, height: 1.2, color: C.faint),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models.dart';
 import '../state.dart';
@@ -30,6 +31,8 @@ class _EditorDialog extends StatefulWidget {
 class _EditorDialogState extends State<_EditorDialog> {
   late final TextEditingController _title;
   final _newTask = TextEditingController();
+  late final TextEditingController _startCtl;
+  late final TextEditingController _endCtl;
   late int _start;
   late int _end;
   late Recurrence _rec;
@@ -51,12 +54,16 @@ class _EditorDialogState extends State<_EditorDialog> {
     _attrManual = e?.attrManual ?? false;
     _reminder = e?.reminder ?? 10;
     _tasks = e?.tasks.map((t) => TaskItem(id: t.id, title: t.title, weight: t.weight)).toList() ?? [];
+    _startCtl = TextEditingController(text: hhmm(_start));
+    _endCtl = TextEditingController(text: hhmm(_end));
   }
 
   @override
   void dispose() {
     _title.dispose();
     _newTask.dispose();
+    _startCtl.dispose();
+    _endCtl.dispose();
     super.dispose();
   }
 
@@ -82,27 +89,24 @@ class _EditorDialogState extends State<_EditorDialog> {
     });
   }
 
-  Future<void> _pickTime(bool start) async {
-    final cur = start ? _start : _end;
-    final picked = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay(hour: (cur ~/ 60) % 24, minute: cur % 60),
-      builder: (ctx, child) => MediaQuery(
-        data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true),
-        child: child!,
-      ),
-    );
-    if (picked == null) return;
+  static int? _parse(String s) {
+    final m = RegExp(r'^([01][0-9]|2[0-3]):([0-5][0-9])$').firstMatch(s);
+    if (m == null) return null;
+    return int.parse(m.group(1)!) * 60 + int.parse(m.group(2)!);
+  }
+
+  bool get _startValid => _parse(_startCtl.text) != null;
+  bool get _endValid => _parse(_endCtl.text) != null;
+  bool get _timesValid => _startValid && _endValid;
+
+  /// Re-reads both typed times. An end time before the start means the
+  /// schedule runs past midnight into the next day.
+  void _onTimeTyped() {
     setState(() {
-      final m = picked.hour * 60 + picked.minute;
-      if (start) {
-        final d = _duration == 0 ? 60 : _duration;
-        _start = m;
-        final e = m + d;
-        _end = e > 24 * 60 ? e - 24 * 60 : e;
-      } else {
-        _end = (m == 0 && _start > 0) ? 24 * 60 : m;
-      }
+      final s = _parse(_startCtl.text);
+      final e = _parse(_endCtl.text);
+      if (s != null) _start = s;
+      if (e != null) _end = e;
     });
   }
 
@@ -127,8 +131,8 @@ class _EditorDialogState extends State<_EditorDialog> {
   void _save() {
     final title = _title.text.trim();
     if (title.isEmpty) return setState(() => _error = 'Give the activity a name.');
+    if (!_timesValid) return setState(() => _error = 'Type times as HH:MM, e.g. 01:30.');
     if (_end == _start) return setState(() => _error = 'Start and end time cannot be the same.');
-    if (_start < 5 * 60 || _end > 23 * 60) return setState(() => _error = 'Schedules run between 05:00 and 23:00.');
     if ((_rec.type == 'daily' || _rec.type == 'weekly') && _rec.weekdays.isEmpty) {
       return setState(() => _error = 'Pick at least one day.');
     }
@@ -337,15 +341,31 @@ class _EditorDialogState extends State<_EditorDialog> {
                           labelWidth: 44,
                           child: Row(
                             children: [
-                              Expanded(child: _Pill(text: hhmm(_start), onTap: () => _pickTime(true), expand: true)),
+                              Expanded(child: _TimeField(controller: _startCtl, label: 'Start time', valid: _startValid || _startCtl.text.length < 5, onChanged: _onTimeTyped)),
                               const Padding(
                                 padding: EdgeInsets.symmetric(horizontal: 6),
                                 child: Icon(Icons.arrow_forward, size: 16, color: C.faint),
                               ),
-                              Expanded(child: _Pill(text: _end == 24 * 60 ? '24:00' : (_overnight ? '${hhmm(_end)} +1' : hhmm(_end)), onTap: () => _pickTime(false), expand: true)),
+                              Expanded(child: _TimeField(controller: _endCtl, label: 'End time', valid: _endValid || _endCtl.text.length < 5, onChanged: _onTimeTyped)),
                             ],
                           ),
                         ),
+                        if ((_startCtl.text.length == 5 && !_startValid) || (_endCtl.text.length == 5 && !_endValid))
+                          const Padding(
+                            padding: EdgeInsets.fromLTRB(38, 8, 10, 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text('Use 24-hour time, e.g. 01:30 or 23:15', style: TextStyle(fontSize: 11.5, color: C.coral)),
+                            ),
+                          )
+                        else if (_timesValid && _overnight)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(38, 8, 10, 8),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text('Ends the next day (${_duration ~/ 60} h ${_duration % 60} min)', style: const TextStyle(fontSize: 11.5, color: C.muted)),
+                            ),
+                          ),
                         _SettingRow(
                           icon: Icons.notifications_none,
                           label: 'Reminder',
@@ -663,6 +683,52 @@ class _WeightChip extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
           child: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: fg)),
+        ),
+      ),
+    );
+  }
+}
+
+class _TimeFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    var digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digits.length > 4) digits = digits.substring(0, 4);
+    final text = digits.length > 2 ? '${digits.substring(0, 2)}:${digits.substring(2)}' : digits;
+    return TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
+  }
+}
+
+class _TimeField extends StatelessWidget {
+  const _TimeField({required this.controller, required this.label, required this.valid, required this.onChanged});
+  final TextEditingController controller;
+  final String label;
+  final bool valid;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    OutlineInputBorder b(Color c) => OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: c));
+    return Semantics(
+      label: label,
+      textField: true,
+      child: TextField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        inputFormatters: [_TimeFormatter()],
+        textAlign: TextAlign.center,
+        onChanged: (_) => onChanged(),
+        style: const TextStyle(fontSize: 14, letterSpacing: 0.5),
+        decoration: InputDecoration(
+          isDense: true,
+          hintText: 'HH:MM',
+          hintStyle: const TextStyle(color: C.faint),
+          filled: true,
+          fillColor: C.surface,
+          contentPadding: const EdgeInsets.symmetric(vertical: 9),
+          enabledBorder: b(valid ? Colors.transparent : C.coral),
+          focusedBorder: b(valid ? C.gold : C.coral),
+          border: b(Colors.transparent),
         ),
       ),
     );
